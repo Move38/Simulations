@@ -22,6 +22,8 @@ enum LandType {
 };
 
 byte myLandType[6] = {SOIL, SOIL, SOIL, SOIL, SOIL, SOIL};
+byte myTreeLevel[6] = {0, 0, 0, 0, 0, 0};
+#define 
 
 #define LIGHT_DURATION 600
 Timer lighteningStrikeTimer;
@@ -30,6 +32,11 @@ bool didLighteningStrike = false;
 
 #define STEP_DURATION 200
 Timer stepTimer;
+
+#define TREE_INTERAL 200
+Timer treeTimer;
+#define FIRE_INTERVAL 50
+Timer fireTimer;
 
 void setup() {
   // put your setup code here, to run once:
@@ -40,15 +47,11 @@ void loop() {
   // put your main code here, to run repeatedly:
 
   if (buttonDoubleClicked()) {
-    FOREACH_FACE(f) {
-      setLandTypeOnFace(TREE, f);
-    }
+
   }
 
   if (buttonSingleClicked()) {
-    FOREACH_FACE(f) {
-      setLandTypeOnFace(CTRL_FIRE, f);
-    }
+
   }
 
   if (buttonLongPressed()) {
