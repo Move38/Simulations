@@ -28,7 +28,7 @@ Timer lighteningStrikeTimer;
 bool didLighteningStrike = false;
 
 
-#define STEP_DURATION 1000
+#define STEP_DURATION 200
 Timer stepTimer;
 
 void setup() {
@@ -67,21 +67,21 @@ void loop() {
   if (stepTimer.isExpired()) {
     // ready to evaluate world
 
-    // burn out after we have been fire
+    // evaluate the world one face at a time :)
     FOREACH_FACE(f) {
+
+      // burn out after we have been fire
       if (myLandType[f] == WILD_FIRE || myLandType[f] == CTRL_FIRE) {
         myLandType[f] = SOIL;
       }
-    }
 
-    byte numTrees = 0;
-
-    FOREACH_FACE(f) {
+      byte numTrees = 0;
+      // check neighboring Blink if present
       if (!isValueReceivedOnFaceExpired(f)) {
         // we have a neighbor :)
         byte neighbor = getLastValueReceivedOnFace(f);
 
-        if (neighbor == WILD_FIRE) {
+        if (myLandType[f] == TREE && neighbor == WILD_FIRE) {
           // then we catch fire
           myLandType[f] = WILD_FIRE;
         }
@@ -89,24 +89,42 @@ void loop() {
           numTrees++;
         }
       }
-    }
 
-    // turn soil into tree with a higher probability with more trees
-    if (random(40) < (numTrees)) {
-      FOREACH_FACE(f) {
+      // check 2 adjacent faces
+      if (myLandType[f] == TREE && getLandTypeToMyLeft(f) == WILD_FIRE) {
+        // then we catch fire
+        myLandType[f] = WILD_FIRE;
+      }
+      else if (getLandTypeToMyLeft(f) == TREE) {
+        numTrees++;
+      }
+
+      if (myLandType[f] == TREE && getLandTypeToMyRight(f) == WILD_FIRE) {
+        // then we catch fire
+        myLandType[f] = WILD_FIRE;
+      }
+      else if (getLandTypeToMyRight(f) == TREE) {
+        numTrees++;
+      }
+
+
+      // turn soil into tree with a higher probability with more trees
+      if (random(20) < (numTrees)) {
         if (myLandType[f] == SOIL) {
           setLandTypeOnFace(TREE, f);
         }
       }
-    }
 
+    } // done with this face
+
+    // reset the step timer
     stepTimer.set(STEP_DURATION);
   }
 
   // DISPLAY STATES
   FOREACH_FACE(f) {
     switch (myLandType[f]) {
-      case SOIL:      setColorOnFace(BLUE, f);    break;
+      case SOIL:      setColorOnFace(OFF, f);    break;
       case TREE:      setColorOnFace(GREEN, f);   break;
       case CTRL_FIRE: setColorOnFace(ORANGE, f);  break;
       case WILD_FIRE: setColorOnFace(RED, f);     break;
@@ -116,6 +134,24 @@ void loop() {
   // SHARE MY STATE
   FOREACH_FACE(f) {
     setValueSentOnFace(myLandType[f], f);
+  }
+}
+
+byte getLandTypeToMyLeft(byte face) {
+  if (face > 0) {
+    return myLandType[face - 1];
+  }
+  else {
+    return myLandType[5];
+  }
+}
+
+byte getLandTypeToMyRight(byte face) {
+  if (face < 5) {
+    return myLandType[face + 1];
+  }
+  else {
+    return myLandType[0];
   }
 }
 
