@@ -34,7 +34,7 @@ Timer lighteningStrikeTimer;
 bool didLighteningStrike = false;
 
 
-#define STEP_DURATION 200
+#define STEP_DURATION 100
 Timer stepTimer;
 
 //display defines
@@ -129,12 +129,12 @@ void loop() {
 
         //SPROUT
         if (hasNeighboringTree(f)) {//if I have neighboring trees, chances are higher
-          if (random(7) == 0) {
+          if (random(15) == 0) {
             myLandType[f] = TREE;
             myTreeLevel[f] = 10;
           }
         } else {//when alone, chances are much smaller
-          if (random(400) == 0) {
+          if (random(800) == 0) {
             myLandType[f] = TREE;
             myTreeLevel[f] = 10;
           }
