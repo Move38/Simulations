@@ -109,7 +109,7 @@ void loop() {
 
         //check for wildfire
         if (hasNeighboringWildFire(f)) {
-          if (random(2) == 0) {
+          if (random(1) == 0) {
             myLandType[f] = WILD_FIRE;
           }
         }
@@ -117,8 +117,13 @@ void loop() {
       } else if (myLandType[f] == SOIL) {
 
         //SPROUT
-        if (hasNeighboringTree(f)) {
-          if (random(6) == 0) {
+        if (hasNeighboringTree(f)) {//if I have neighboring trees, chances are higher
+          if (random(7) == 0) {
+            myLandType[f] = TREE;
+            myTreeLevel[f] = 10;
+          }
+        } else {//when alone, chances are much smaller
+          if (random(20) == 0) {
             myLandType[f] = TREE;
             myTreeLevel[f] = 10;
           }
