@@ -27,7 +27,7 @@ byte myTreeLevel[6] = {0, 0, 0, 0, 0, 0};
 #define TREE_GROWTH_STEP 5
 
 #define CTRL_FIRE_BURN_STEP 30
-#define WILD_FIRE_BURN_STEP 20
+#define WILD_FIRE_BURN_STEP 10
 
 #define LIGHT_DURATION 600
 Timer lighteningStrikeTimer;
@@ -37,9 +37,20 @@ bool didLighteningStrike = false;
 #define STEP_DURATION 200
 Timer stepTimer;
 
+//display defines
+#define FIRE_HUE_MIN 15
+#define FIRE_HUE_MAX 30
+#define FIRE_BRIGHTNESS_FLUX_MIN 5
+#define FIRE_BRIGHTNESS_FLUX_MAX 50
+
+#define TREE_FULL_HUE 80
+#define TREE_YOUNG_HUE 55
+#define TREE_BRIGHTNESS_MIN 128
+#define TREE_BRIGHTNESS_MAX 255
+
 void setup() {
   // put your setup code here, to run once:
-
+  randomize();
 }
 
 void loop() {
@@ -123,7 +134,7 @@ void loop() {
             myTreeLevel[f] = 10;
           }
         } else {//when alone, chances are much smaller
-          if (random(20) == 0) {
+          if (random(400) == 0) {
             myLandType[f] = TREE;
             myTreeLevel[f] = 10;
           }
@@ -140,10 +151,26 @@ void loop() {
   // DISPLAY STATES
   FOREACH_FACE(f) {
     switch (myLandType[f]) {
-      case SOIL:      setColorOnFace(OFF, f);    break;
-      case TREE:      setColorOnFace(dim(GREEN, 155 + myTreeLevel[f]), f);   break;
-      case CTRL_FIRE: setColorOnFace(dim(ORANGE, 155 + myTreeLevel[f]), f);   break;
-      case WILD_FIRE: setColorOnFace(dim(RED, 155 + myTreeLevel[f]), f);   break;
+      case SOIL:
+        setColorOnFace(OFF, f);
+        break;
+      case TREE:
+        {
+          byte treeHue = map(myTreeLevel[f], 0, 100, TREE_YOUNG_HUE, TREE_FULL_HUE);
+          byte treeBrightness = map(myTreeLevel[f], 0, MAX_TREE_LEVEL, TREE_BRIGHTNESS_MIN, TREE_BRIGHTNESS_MAX);
+          setColorOnFace(makeColorHSB(treeHue, 255, treeBrightness), f);
+        }
+        break;
+
+      case CTRL_FIRE:
+      case WILD_FIRE:
+        {
+          byte fireBrightnessFlux = map(myTreeLevel[f], 0, MAX_TREE_LEVEL, FIRE_BRIGHTNESS_FLUX_MIN, FIRE_BRIGHTNESS_FLUX_MAX);
+          byte fireBrightness = map(myTreeLevel[f], 0, MAX_TREE_LEVEL, 0, 255 - FIRE_BRIGHTNESS_FLUX_MAX) + random(fireBrightnessFlux);
+          byte fireHue = FIRE_HUE_MIN + random(FIRE_HUE_MAX - FIRE_HUE_MIN);
+          setColorOnFace(makeColorHSB(fireHue, 255, fireBrightness), f);
+        }
+        break;
     }
   }
 
