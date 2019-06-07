@@ -23,7 +23,11 @@ enum LandType {
 
 byte myLandType[6] = {SOIL, SOIL, SOIL, SOIL, SOIL, SOIL};
 byte myTreeLevel[6] = {0, 0, 0, 0, 0, 0};
-#define 
+#define MAX_TREE_LEVEL 100
+#define TREE_GROWTH_STEP 5
+
+#define CTRL_FIRE_BURN_STEP 30
+#define WILD_FIRE_BURN_STEP 20
 
 #define LIGHT_DURATION 600
 Timer lighteningStrikeTimer;
@@ -33,11 +37,6 @@ bool didLighteningStrike = false;
 #define STEP_DURATION 200
 Timer stepTimer;
 
-#define TREE_INTERAL 200
-Timer treeTimer;
-#define FIRE_INTERVAL 50
-Timer fireTimer;
-
 void setup() {
   // put your setup code here, to run once:
 
@@ -46,79 +45,88 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  if (buttonDoubleClicked()) {
-
-  }
-
-  if (buttonSingleClicked()) {
-
-  }
-
-  if (buttonLongPressed()) {
-    didLighteningStrike = true;
-    lighteningStrikeTimer.set(LIGHT_DURATION);
-  }
-
-  if (didLighteningStrike && lighteningStrikeTimer.isExpired()) {
-    FOREACH_FACE(f) {
-      setLandTypeOnFace(WILD_FIRE, f);
+  if (buttonLongPressed()) {//GROW TREES
+    if (!haveTrees() && !haveFire()) {
+      FOREACH_FACE(f) {
+        myLandType[f] = TREE;
+        myTreeLevel[f] = 10;
+      }
     }
+  }
 
-    didLighteningStrike = false;
+  if (buttonSingleClicked()) {//CONTROLLED FIRE
+    if (haveTrees() && !haveFire()) {
+      FOREACH_FACE(f) {
+        setLandTypeOnFace(CTRL_FIRE, f);
+      }
+    }
+  }
+
+  if (buttonDoubleClicked()) {//LIGHTNING
+    FOREACH_FACE(f) {
+      if (myLandType[f] == TREE) {
+        myLandType[f] = WILD_FIRE;
+      }
+    }
   }
 
   if (stepTimer.isExpired()) {
-    // ready to evaluate world
 
-    // evaluate the world one face at a time :)
     FOREACH_FACE(f) {
+      if (myLandType[f] == WILD_FIRE) {
 
-      // burn out after we have been fire
-      if (myLandType[f] == WILD_FIRE || myLandType[f] == CTRL_FIRE) {
-        myLandType[f] = SOIL;
-      }
-
-      byte numTrees = 0;
-      // check neighboring Blink if present
-      if (!isValueReceivedOnFaceExpired(f)) {
-        // we have a neighbor :)
-        byte neighbor = getLastValueReceivedOnFace(f);
-
-        if (myLandType[f] == TREE && neighbor == WILD_FIRE) {
-          // then we catch fire
-          myLandType[f] = WILD_FIRE;
+        //BURN
+        if (myTreeLevel[f] <= WILD_FIRE_BURN_STEP) {//last step of this fire
+          myTreeLevel[f] = 0;
+          myLandType[f] = SOIL;
+        } else {//regular burn
+          myTreeLevel[f] -= WILD_FIRE_BURN_STEP;
         }
-        else if (neighbor == TREE) {
-          numTrees++;
+
+      } else if (myLandType[f] == CTRL_FIRE) {
+
+        //BURN
+        if (myTreeLevel[f] <= CTRL_FIRE_BURN_STEP) {//this is the last step of this fire
+          myTreeLevel[f] = 0;
+          myLandType[f] = SOIL;
+        } else {//regular burn down
+          myTreeLevel[f] -= CTRL_FIRE_BURN_STEP;
         }
-      }
 
-      // check 2 adjacent faces
-      if (myLandType[f] == TREE && getLandTypeToMyLeft(f) == WILD_FIRE) {
-        // then we catch fire
-        myLandType[f] = WILD_FIRE;
-      }
-      else if (getLandTypeToMyLeft(f) == TREE) {
-        numTrees++;
-      }
-
-      if (myLandType[f] == TREE && getLandTypeToMyRight(f) == WILD_FIRE) {
-        // then we catch fire
-        myLandType[f] = WILD_FIRE;
-      }
-      else if (getLandTypeToMyRight(f) == TREE) {
-        numTrees++;
-      }
-
-
-      // turn soil into tree with a higher probability with more trees
-      if (random(20) < (numTrees)) {
-        if (myLandType[f] == SOIL) {
-          setLandTypeOnFace(TREE, f);
+        //check for neighboring wildfire just in case
+        if (myLandType[f] == CTRL_FIRE) { //checking just in case we transitioned to SOIL
+          if (hasNeighboringWildFire(f)) {//one of my neighbors is wildfire. I will become wildfire too
+            myLandType[f] = WILD_FIRE;
+          }
         }
+
+      } else if (myLandType[f] == TREE) {
+
+        //grow
+        if (myTreeLevel[f] < MAX_TREE_LEVEL) {//this tree can still grow
+          myTreeLevel[f] += TREE_GROWTH_STEP;
+        }
+
+        //check for wildfire
+        if (hasNeighboringWildFire(f)) {
+          if (random(2) == 0) {
+            myLandType[f] = WILD_FIRE;
+          }
+        }
+
+      } else if (myLandType[f] == SOIL) {
+
+        //SPROUT
+        if (hasNeighboringTree(f)) {
+          if (random(6) == 0) {
+            myLandType[f] = TREE;
+            myTreeLevel[f] = 10;
+          }
+        }
+
       }
 
-    } // done with this face
+    }
 
     // reset the step timer
     stepTimer.set(STEP_DURATION);
@@ -128,9 +136,9 @@ void loop() {
   FOREACH_FACE(f) {
     switch (myLandType[f]) {
       case SOIL:      setColorOnFace(OFF, f);    break;
-      case TREE:      setColorOnFace(GREEN, f);   break;
-      case CTRL_FIRE: setColorOnFace(ORANGE, f);  break;
-      case WILD_FIRE: setColorOnFace(RED, f);     break;
+      case TREE:      setColorOnFace(dim(GREEN, 155 + myTreeLevel[f]), f);   break;
+      case CTRL_FIRE: setColorOnFace(dim(ORANGE, 155 + myTreeLevel[f]), f);   break;
+      case WILD_FIRE: setColorOnFace(dim(RED, 155 + myTreeLevel[f]), f);   break;
     }
   }
 
@@ -138,6 +146,48 @@ void loop() {
   FOREACH_FACE(f) {
     setValueSentOnFace(myLandType[f], f);
   }
+}
+
+bool hasNeighboringTree(byte face) {
+  bool treeNeighbors = false;
+
+  if (getLandTypeToMyLeft(face) == TREE) {
+    treeNeighbors = true;
+  }
+
+  if (getLandTypeToMyRight(face) == TREE) {
+    treeNeighbors = true;
+  }
+
+  if (!isValueReceivedOnFaceExpired(face)) {//neighbor!
+    byte neighbor = getLastValueReceivedOnFace(face);
+    if (neighbor == TREE) {
+      treeNeighbors = true;
+    }
+  }
+
+  return treeNeighbors;
+}
+
+bool hasNeighboringWildFire(byte face) {
+  bool wildfireNeighbors = false;
+
+  if (getLandTypeToMyLeft(face) == WILD_FIRE) {
+    wildfireNeighbors = true;
+  }
+
+  if (getLandTypeToMyRight(face) == WILD_FIRE) {
+    wildfireNeighbors = true;
+  }
+
+  if (!isValueReceivedOnFaceExpired(face)) {//neighbor!
+    byte neighbor = getLastValueReceivedOnFace(face);
+    if (neighbor == WILD_FIRE) {
+      wildfireNeighbors = true;
+    }
+  }
+
+  return wildfireNeighbors;
 }
 
 byte getLandTypeToMyLeft(byte face) {
@@ -161,3 +211,28 @@ byte getLandTypeToMyRight(byte face) {
 void setLandTypeOnFace( byte type, byte face) {
   myLandType[face] = type;
 };
+
+bool haveTrees() {
+  bool treeFound = false;
+  FOREACH_FACE(f) {
+    if (myLandType[f] == TREE) {
+      treeFound = true;
+    }
+  }
+
+  return treeFound;
+}
+
+bool haveFire() {
+  bool fireFound = false;
+  FOREACH_FACE(f) {
+    if (myLandType[f] == WILD_FIRE || myLandType[f] == CTRL_FIRE) {
+      fireFound = true;
+    }
+  }
+
+  return fireFound;
+}
+
+
+
