@@ -1,5 +1,5 @@
 /*  Forest Fire
-    by Jonathan Bobrow, Move38
+    by Jonathan Bobrow & Daniel King, Move38
     06/04/2019
 
     Press a Tree to control burn (no spreading)
@@ -10,6 +10,14 @@
     The opportunity for a Tree to grow happens 3 times per second and fire
     spreads at this rate as well.
     The forest shares a heartbeat, so trees grow at the same time
+
+    --------------------
+    Blinks by Move38
+    Brought to life via Kickstarter 2018
+
+    @madewithblinks
+    www.move38.com
+    --------------------
 */
 
 // firefly style sync
@@ -37,6 +45,9 @@ bool didLighteningStrike = false;
 #define STEP_DURATION 100
 Timer stepTimer;
 
+#define BURNOUT_DURATION 2000 // allow control burn to prevent growth for 2 seconds
+Timer burnoutTimer;
+
 //display defines
 #define FIRE_HUE_MIN 15
 #define FIRE_HUE_MAX 30
@@ -56,7 +67,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  if (buttonLongPressed()) {//GROW TREES
+  if (buttonMultiClicked()) {//GROW TREES
     if (!haveTrees() && !haveFire()) {
       FOREACH_FACE(f) {
         myLandType[f] = TREE;
@@ -65,7 +76,7 @@ void loop() {
     }
   }
 
-  if (buttonSingleClicked()) {//CONTROLLED FIRE
+  if (buttonDoubleClicked()) {//CONTROLLED FIRE
     if (haveTrees() && !haveFire()) {
       FOREACH_FACE(f) {
         setLandTypeOnFace(CTRL_FIRE, f);
@@ -73,7 +84,7 @@ void loop() {
     }
   }
 
-  if (buttonDoubleClicked()) {//LIGHTNING
+  if (buttonSingleClicked()) {//LIGHTNING
     FOREACH_FACE(f) {
       if (myLandType[f] == TREE) {
         myLandType[f] = WILD_FIRE;
@@ -81,6 +92,7 @@ void loop() {
     }
   }
 
+  if ( burnoutTimer.isExpired()) {
   if (stepTimer.isExpired()) {
 
     FOREACH_FACE(f) {
@@ -90,6 +102,7 @@ void loop() {
         if (myTreeLevel[f] <= WILD_FIRE_BURN_STEP) {//last step of this fire
           myTreeLevel[f] = 0;
           myLandType[f] = SOIL;
+          burnoutTimer.set(BURNOUT_DURATION);
         } else {//regular burn
           myTreeLevel[f] -= WILD_FIRE_BURN_STEP;
         }
@@ -100,6 +113,7 @@ void loop() {
         if (myTreeLevel[f] <= CTRL_FIRE_BURN_STEP) {//this is the last step of this fire
           myTreeLevel[f] = 0;
           myLandType[f] = SOIL;
+          burnoutTimer.set(BURNOUT_DURATION);
         } else {//regular burn down
           myTreeLevel[f] -= CTRL_FIRE_BURN_STEP;
         }
@@ -147,6 +161,8 @@ void loop() {
     // reset the step timer
     stepTimer.set(STEP_DURATION);
   }
+  
+  } // end burnout timer
 
   // DISPLAY STATES
   FOREACH_FACE(f) {
@@ -265,6 +281,3 @@ bool haveFire() {
 
   return fireFound;
 }
-
-
-
